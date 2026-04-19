@@ -1,0 +1,120 @@
+[
+  {
+    "Name": "TheFoodHeroServer",
+    "Services": [
+      {
+        "Name": "app-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:app",
+        "Port": 1919,
+        "HealthCheckUrl": "http://localhost:1919/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "auth-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:auth",
+        "Port": 4000,
+        "HealthCheckUrl": "http://localhost:4000/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "geo-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:geo",
+        "Port": 5005,
+        "HealthCheckUrl": "http://localhost:5005/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "user-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:user",
+        "Port": 5000,
+        "HealthCheckUrl": "http://localhost:5000/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "food-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:food",
+        "Port": 5002,
+        "HealthCheckUrl": "http://localhost:5002/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "notify-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:notify",
+        "Port": 3001,
+        "HealthCheckUrl": "http://localhost:3001/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "appointments-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:appointments",
+        "Port": 5001,
+        "HealthCheckUrl": "http://localhost:5001/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "diet-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:diet",
+        "Port": 4004,
+        "HealthCheckUrl": "http://localhost:4004/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "payment-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:payment",
+        "Port": 5003,
+        "HealthCheckUrl": "http://localhost:5003/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "proxy-server",
+        "WorkingDirectory": "D:\\Dev\\TFH_Proxy_Server",
+        "Command": "node",
+        "Arguments": "proxy-server.js",
+        "Port": 0,
+        "HealthCheckUrl": null,
+        "AutoStart": false
+      },
+      {
+        "Name": "consul",
+        "WorkingDirectory": "D:\\Consul",
+        "Command": "consul.exe",
+        "Arguments": "agent -server -bootstrap-expect=1 -client=0.0.0.0 -bind=0.0.0.0 -ui -data-dir=D:\\Consul\\data -config-dir=D:\\Consul\\config.d",
+        "Port": 8500,
+        "HealthCheckUrl": "http://localhost:8500/ui",
+        "AutoStart": false
+      }
+    ]
+  },
+  {
+    "Name": "TheFoodHeroWEB",
+    "Services": [
+      {
+        "Name": "web-server",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroWeb",
+        "Command": "npm",
+        "Arguments": "run dev",
+        "Port": 5173,
+        "HealthCheckUrl": "http://localhost:5173",
+        "AutoStart": false
+      }
+    ]
+  }
+]
