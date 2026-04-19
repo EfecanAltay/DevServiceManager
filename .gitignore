@@ -1,0 +1,28 @@
+## [Visual Studio]
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## [Build Results]
+[Bb]in/
+[Oo]bj/
+
+## [Output]
+*.exe
+*.dll
+*.pdb
+*.log
+
+## [Publish]
+publish/
+
+## [Project specific]
+services.json
+service_logs/
+
+## [OS]
+Thumbs.db
+Desktop.ini
+.DS_Store

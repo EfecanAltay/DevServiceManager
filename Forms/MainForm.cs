@@ -34,6 +34,11 @@ public class MainForm : Form
     private readonly Dictionary<string, ServiceListItem> _serviceItems = new();
     private readonly List<SolutionListItem> _solutionItems = new();
 
+    // ── Arka Plan / Sistem Tepsisi ──
+    private NotifyIcon? _trayIcon;
+    private ContextMenuStrip? _trayMenu;
+    private bool _isExiting = false;
+
     public MainForm(ServiceManager manager)
     {
         _manager = manager;
@@ -109,6 +114,39 @@ public class MainForm : Form
 
         // ── Başlangıç görünümü ──
         ShowSolutions();
+
+        // ── Tepsi simgesi ──
+        InitializeTray();
+    }
+
+    private void InitializeTray()
+    {
+        _trayMenu = new ContextMenuStrip();
+        _trayMenu.Items.Add("Göster", null, (_, _) => RestoreFromTray());
+        _trayMenu.Items.Add("-");
+        _trayMenu.Items.Add("Çıkış", null, (_, _) => 
+        {
+            _isExiting = true;
+            Close();
+        });
+
+        _trayIcon = new NotifyIcon
+        {
+            Icon = Icon ?? SystemIcons.Application,
+            ContextMenuStrip = _trayMenu,
+            Text = "Dev Service Manager",
+            Visible = true
+        };
+
+        _trayIcon.DoubleClick += (_, _) => RestoreFromTray();
+    }
+
+    private void RestoreFromTray()
+    {
+        Show();
+        WindowState = FormWindowState.Normal;
+        BringToFront();
+        Activate();
     }
 
     // ──────────────────────────────────────────────
@@ -434,8 +472,25 @@ public class MainForm : Form
     // Kapanış
     // ──────────────────────────────────────────────
 
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        if (WindowState == FormWindowState.Minimized)
+        {
+            Hide();
+        }
+    }
+
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
+        // Eğer tepsi menüsünden Çıkış denmediyse, sadece gizle
+        if (!_isExiting && e.CloseReason == CloseReason.UserClosing)
+        {
+            e.Cancel = true;
+            Hide();
+            return;
+        }
+
         var running = _manager.Services
             .Where(s => s.Status == ServiceStatus.Running || s.Status == ServiceStatus.Starting)
             .ToList();
@@ -451,6 +506,7 @@ public class MainForm : Form
             if (result == DialogResult.Cancel)
             {
                 e.Cancel = true;
+                _isExiting = false; // Çıkış iptal edildi
                 return;
             }
 
@@ -461,6 +517,8 @@ public class MainForm : Form
             }
         }
 
+        _trayIcon?.Dispose();
+        _trayMenu?.Dispose();
         _manager.Dispose();
         base.OnFormClosing(e);
     }

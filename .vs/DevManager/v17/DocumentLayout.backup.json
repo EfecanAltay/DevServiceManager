@@ -1,18 +1,10 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "D:\\Dev\\DevManager\\",
+  "WorkspaceRootPath": "D:\\Dev\\DevServiceManager\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|d:\\dev\\devmanager\\services\\processrunner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|solutionrelative:services\\processrunner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|d:\\dev\\devmanager\\managers\\servicemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|solutionrelative:managers\\servicemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|d:\\dev\\devmanager\\models\\logentry.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|solutionrelative:models\\logentry.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|d:\\dev\\devservicemanager\\forms\\mainform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|solutionrelative:forms\\mainform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -22,8 +14,21 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 4,
+          "SelectedChildIndex": 0,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MainForm.cs",
+              "DocumentMoniker": "D:\\Dev\\DevServiceManager\\Forms\\MainForm.cs",
+              "RelativeDocumentMoniker": "Forms\\MainForm.cs",
+              "ToolTip": "D:\\Dev\\DevServiceManager\\Forms\\MainForm.cs",
+              "RelativeToolTip": "Forms\\MainForm.cs",
+              "ViewState": "AgIAAIMAAAAAAAAAAAAwwI8AAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-19T11:25:51.357Z",
+              "EditorCaption": ""
+            },
             {
               "$type": "Bookmark",
               "Name": "ST:129:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
@@ -31,45 +36,6 @@
             {
               "$type": "Bookmark",
               "Name": "ST:130:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "LogEntry.cs",
-              "DocumentMoniker": "D:\\Dev\\DevManager\\Models\\LogEntry.cs",
-              "RelativeDocumentMoniker": "Models\\LogEntry.cs",
-              "ToolTip": "D:\\Dev\\DevManager\\Models\\LogEntry.cs",
-              "RelativeToolTip": "Models\\LogEntry.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAKAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-11T18:20:59.368Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "ServiceManager.cs",
-              "DocumentMoniker": "D:\\Dev\\DevManager\\Managers\\ServiceManager.cs",
-              "RelativeDocumentMoniker": "Managers\\ServiceManager.cs",
-              "ToolTip": "D:\\Dev\\DevManager\\Managers\\ServiceManager.cs",
-              "RelativeToolTip": "Managers\\ServiceManager.cs",
-              "ViewState": "AgIAAFAAAAAAAAAAAAAIwEUAAAAQAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-11T17:51:01.016Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "ProcessRunner.cs",
-              "DocumentMoniker": "D:\\Dev\\DevManager\\Services\\ProcessRunner.cs",
-              "RelativeDocumentMoniker": "Services\\ProcessRunner.cs",
-              "ToolTip": "D:\\Dev\\DevManager\\Services\\ProcessRunner.cs",
-              "RelativeToolTip": "Services\\ProcessRunner.cs",
-              "ViewState": "AgIAACcAAAAAAAAAAAApwDEAAAAdAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-11T17:48:42.307Z",
-              "EditorCaption": ""
             }
           ]
         }
