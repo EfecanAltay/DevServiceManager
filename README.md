@@ -5,7 +5,7 @@
 ## Proje Yapısı
 
 ```
-DevManager/
+DevServiceManager/
 ├── Configuration/
 │   └── ConfigurationLoader.cs     # services.json okuma, örnek config üretme
 ├── Forms/
