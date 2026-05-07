@@ -82,6 +82,11 @@ public class MainForm : Form
         _detailPanel.RestartRequested += name => _manager.RestartAsync(name);
 
         _logPanel = new LogPanel();
+        _logPanel.LogCleared += (serviceName) => 
+        {
+            if (serviceName != null)
+                _manager.ClearLogs(serviceName);
+        };
 
         _rightSplit = new SplitContainer
         {

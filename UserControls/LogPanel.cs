@@ -23,6 +23,8 @@ public class LogPanel : UserControl
     private readonly List<LogEntry> _buffer = new();
     private const int MaxBuffer = 5000;
 
+    public event Action<string?>? LogCleared;
+
     // Bekleyen loglar için kuyruk ve zamanlayıcı
     private readonly ConcurrentQueue<LogEntry> _pendingLogs = new();
     private readonly System.Windows.Forms.Timer _flushTimer;
@@ -178,6 +180,7 @@ public class LogPanel : UserControl
         while (_pendingLogs.TryDequeue(out _)) { } // Bekleyenleri temizle
         _buffer.Clear();
         InvokeIfNeeded(() => _rtb.Clear());
+        LogCleared?.Invoke(_filterService);
     }
 
     public void SetTitle(string title)
