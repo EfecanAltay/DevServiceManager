@@ -28,6 +28,7 @@ public class MainForm : Form
     private readonly SplitContainer _rightSplit;
     private readonly ServiceDetailPanel _detailPanel;
     private readonly LogPanel _logPanel;
+    private readonly ElasticPanel _elasticPanel;
 
     // ── Seçili öğeler ──
     private ServiceListItem? _selectedServiceItem;
@@ -72,8 +73,13 @@ public class MainForm : Form
             BackColor = AppTheme.Surface
         };
 
+        _elasticPanel = new ElasticPanel();
+        _elasticPanel.StartRequested += name => _ = _manager.StartAsync(name);
+        _elasticPanel.StopRequested  += name => _ = _manager.StopAsync(name);
+
         _leftPanel.Controls.Add(_listContainer);
         _leftPanel.Controls.Add(leftHeader);
+        _leftPanel.Controls.Add(_elasticPanel);
 
         // ── Sağ taraf: üst detay + alt log ──
         _detailPanel = new ServiceDetailPanel();
@@ -468,6 +474,13 @@ public class MainForm : Form
 
     private void OnLogReceived(LogEntry entry)
     {
+        // Elasticsearch loglarından cluster health bilgisini çıkar (arka plan thread'inden gelir)
+        if (entry.ServiceName.Equals(_elasticPanel.ServiceName, StringComparison.OrdinalIgnoreCase)
+            && IsHandleCreated && !IsDisposed)
+        {
+            BeginInvoke(() => _elasticPanel.ProcessLog(entry));
+        }
+
         // Sadece seçili servisin loglarını canlı göster
         if (_selectedServiceItem?.State.Definition.Name == entry.ServiceName)
             _logPanel.AppendLog(entry);

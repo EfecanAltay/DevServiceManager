@@ -1,11 +1,249 @@
 [
   {
-    "name": "app-service",
-    "workingDirectory": "D:\\Dev\\TheFoodHeroAPI\\services\\app-service",
-    "command": "npm",
-    "arguments": "run serve",
-    "port": 3000,
-    "healthCheckUrl": "http://localhost:3000/health",
-    "autoStart": false
-  }
+    "Name": "TheFoodHeroServer",
+    "Services": [
+      {
+        "Name": "tfh-app-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:app",
+        "Port": 1919,
+        "HealthCheckUrl": "http://localhost:1919/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "tfh-auth-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:auth",
+        "Port": 4000,
+        "HealthCheckUrl": "http://localhost:4000/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "tfh-geo-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:geo",
+        "Port": 5005,
+        "HealthCheckUrl": "http://localhost:5005/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "tfh-user-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:user",
+        "Port": 5000,
+        "HealthCheckUrl": "http://localhost:5000/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "tfh-food-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:food",
+        "Port": 5002,
+        "HealthCheckUrl": "http://localhost:5002/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "tfh-notify-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:notify",
+        "Port": 3001,
+        "HealthCheckUrl": "http://localhost:3001/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "tfh-appointments-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:appointments",
+        "Port": 5001,
+        "HealthCheckUrl": "http://localhost:5001/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "tfh-diet-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:diet",
+        "Port": 4004,
+        "HealthCheckUrl": "http://localhost:4004/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "tfh-payment-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:payment",
+        "Port": 5003,
+        "HealthCheckUrl": "http://localhost:5003/health",
+        "AutoStart": false
+      },
+	  {
+        "Name": "tfh-chat-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:chat",
+        "Port": 4040,
+        "HealthCheckUrl": "http://localhost:4040/health",
+        "AutoStart": false
+      },
+	  {
+        "Name": "tfh-subscription-service",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI",
+        "Command": "npm",
+        "Arguments": "run serve:subscription",
+        "Port": 5006,
+        "HealthCheckUrl": "http://localhost:5006/health",
+        "AutoStart": false
+      },
+      {
+        "Name": "tfh-proxy-server",
+        "WorkingDirectory": "D:\\Dev\\TFH_Proxy_Server",
+        "Command": "node",
+        "Arguments": "proxy-server.js",
+        "Port": 0,
+        "HealthCheckUrl": null,
+        "AutoStart": false
+      },
+      {
+        "Name": "consul",
+        "WorkingDirectory": "D:\\Consul",
+        "Command": "consul.exe",
+        "Arguments": "agent -server -bootstrap-expect=1 -client=0.0.0.0 -bind=0.0.0.0 -ui -data-dir=D:\\Consul\\data -config-dir=D:\\Consul\\config.d",
+        "Port": 8500,
+        "HealthCheckUrl": "http://localhost:8500/ui",
+        "AutoStart": false
+      },
+	  {
+        "Name": "elasticsearch",
+        "WorkingDirectory": "D:\\Elastic\\elasticsearch\\bin",
+        "Command": "elasticsearch.bat",
+		"Arguments": "",
+        "Port": 9300,
+        "AutoStart": false
+      }
+    ]
+  },
+  {
+    "Name": "TheFoodHeroWEB",
+    "Services": [
+      {
+        "Name": "tfh-web-server",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroWeb",
+        "Command": "npm",
+        "Arguments": "run dev",
+        "Port": 5173,
+        "HealthCheckUrl": "http://localhost:5173",
+        "AutoStart": false
+      }
+    ]
+  },
+  {
+    "Name": "TheFoodHeroWorkers",
+    "Services": [
+      {
+        "Name": "diet-worker",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI\\workers\\diet-worker",
+        "Command": "npm",
+        "Arguments": "run serve",
+        "Port": 4041,
+        "AutoStart": false
+      },
+	  {
+        "Name": "payment-worker",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroAPI\\workers\\payment-worker",
+        "Command": "npm",
+        "Arguments": "run serve",
+        "Port": 4042,
+        "AutoStart": false
+      }
+	 ]
+  },
+  {
+    "Name": "TheFoodHeroSch",
+    "Services": [
+      {
+        "Name": "TheFoodHeroSchUI",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroSch\\schedule-manager-ui",
+        "Command": "npm",
+        "Arguments": "run dev",
+        "Port": 5175,
+        "AutoStart": false
+      },
+	  {
+        "Name": "TheFoodHeroSch",
+        "WorkingDirectory": "D:\\Dev\\TheFoodHeroSch",
+        "Command": "npm",
+        "Arguments": "run dev",
+        "Port": 4010,
+        "AutoStart": false
+      }
+    ]
+  },
+  {
+  "Name": "SaasWarrior",
+  "Services": [
+    {
+      "Name": "sw-gateway",
+      "WorkingDirectory": "d:\\Dev\\SaasWarrior\\apps\\gateway",
+      "Command": "pnpm",
+      "Arguments": "run start:dev",
+      "Port": 3000,
+      "AutoStart": false
+    },
+    {
+      "Name": "sw-auth-service",
+      "WorkingDirectory": "d:\\Dev\\SaasWarrior\\apps\\auth-service",
+      "Command": "pnpm",
+      "Arguments": "run start:dev",
+      "Port": 3001,
+      "AutoStart": false
+    },
+    {
+      "Name": "sw-organization-service",
+      "WorkingDirectory": "d:\\Dev\\SaasWarrior\\apps\\organization-service",
+      "Command": "pnpm",
+      "Arguments": "run start:dev",
+      "Port": 3002,
+      "AutoStart": false
+    },
+    {
+      "Name": "sw-repository-service",
+      "WorkingDirectory": "d:\\Dev\\SaasWarrior\\apps\\repository-service",
+      "Command": "pnpm",
+      "Arguments": "run start:dev",
+      "Port": 3003,
+      "AutoStart": false
+    },
+    {
+      "Name": "sw-scan-service",
+      "WorkingDirectory": "d:\\Dev\\SaasWarrior\\apps\\scan-service",
+      "Command": "pnpm",
+      "Arguments": "run start:dev",
+      "Port": 3004,
+      "AutoStart": false
+    },
+    {
+      "Name": "sw-rust-analyzer-worker",
+      "WorkingDirectory": "d:\\Dev\\SaasWarrior\\analyzer",
+      "Command": "cargo",
+      "Arguments": "run --bin worker",
+      "Port": 0,
+      "AutoStart": false
+    },
+	{
+      "Name": "sw-web-server",
+      "WorkingDirectory": "d:\\Dev\\SaasWarrior\\apps\\frontend",
+      "Command": "pnpm",
+      "Arguments": "run dev",
+      "Port": 5173,
+      "AutoStart": false
+    }
+  ]
+}
 ]

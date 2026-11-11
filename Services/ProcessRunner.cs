@@ -55,8 +55,9 @@ public class ProcessRunner : IDisposable
         if (_process != null)
         {
             process = _process;
-            _ = ReadStreamAsync(process.StandardOutput, LogLevel.Info, _cts.Token);
-            _ = ReadStreamAsync(process.StandardError, LogLevel.Error, _cts.Token);
+            var token = _cts.Token;
+            _ = Task.Run(() => ReadStreamAsync(process.StandardOutput, LogLevel.Info, token));
+            _ = Task.Run(() => ReadStreamAsync(process.StandardError, LogLevel.Error, token));
         }
 
         await Task.CompletedTask;
@@ -178,11 +179,13 @@ public class ProcessRunner : IDisposable
     {
         try
         {
-            while (!token.IsCancellationRequested && !reader.EndOfStream)
+            // EndOfStream senkron olarak bloklar (UI thread'i dondurur); bunun yerine
+            // ReadLineAsync kullanılır ve null dönünce akış bitmiş sayılır.
+            while (!token.IsCancellationRequested)
             {
-                var line = await reader.ReadLineAsync(token);
-                if (line is not null)
-                    Emit(line, level);
+                var line = await reader.ReadLineAsync(token).ConfigureAwait(false);
+                if (line is null) break;
+                Emit(line, level);
             }
         }
         catch (OperationCanceledException) { }
@@ -210,13 +213,20 @@ public class ProcessRunner : IDisposable
         var command = def.Command.Trim();
         var arguments = def.Arguments?.Trim() ?? string.Empty;
 
-        // EĞER: Windows üzerindeyse VE (tam yol verilmişse VEYA .exe/.bat/.cmd uzantısı varsa VEYA komut içinde boşluk yoksa)
-        // O zaman doğrudan çalıştırabiliriz (cmd.exe /c kullanmadan).
+        // Eğer komut tam yol değilse ve WorkingDirectory altında bu dosya varsa tam yolunu al
+        if (!Path.IsPathRooted(command))
+        {
+            var localPath = Path.Combine(def.WorkingDirectory, command);
+            if (File.Exists(localPath))
+            {
+                command = localPath;
+            }
+        }
+
+        // Windows üzerinde yalnızca .exe uzantılı ikili dosyalar doğrudan çalıştırılır.
+        // .bat ve .cmd dosyaları Windows komut yorumlayıcısı (cmd.exe /c) gerektirir.
         bool isDirectExecutable = OperatingSystem.IsWindows() && 
-            (Path.IsPathRooted(command) || 
-             command.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || 
-             command.EndsWith(".bat", StringComparison.OrdinalIgnoreCase) || 
-             command.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase));
+            command.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
 
         if (isDirectExecutable)
         {
@@ -234,7 +244,7 @@ public class ProcessRunner : IDisposable
             };
         }
 
-        // Değilse ve Windows'taysa, cmd.exe /c ile çalıştır (npm vb. scriptler için)
+        // Değilse ve Windows'taysa, cmd.exe /c ile çalıştır (.bat, .cmd, npm, pnpm vb. scriptler için)
         if (OperatingSystem.IsWindows())
         {
             return new ProcessStartInfo

@@ -70,64 +70,55 @@ public class ServiceManager : IDisposable
 
     public async Task StartAsync(string serviceName)
     {
-        await Task.Run(async () =>
+        if (!_states.TryGetValue(serviceName, out var state)) return;
+
+        if (state.Status == ServiceStatus.Running || state.Status == ServiceStatus.Starting)
+            return;
+
+        UpdateStatus(state, ServiceStatus.Starting);
+
+        try
         {
-            if (!_states.TryGetValue(serviceName, out var state)) return;
-
-            if (state.Status == ServiceStatus.Running || state.Status == ServiceStatus.Starting)
-                return;
-
-            UpdateStatus(state, ServiceStatus.Starting);
-
-            try
+            var runner = new ProcessRunner(serviceName);
+            runner.LogReceived += OnLogReceived;
+            runner.ProcessExited += exitCode => OnProcessExited(serviceName, exitCode);
+            runner.ProcessIDHandled += pidID =>
             {
-                var runner = new ProcessRunner(serviceName);
-                runner.LogReceived += OnLogReceived;
-                runner.ProcessExited += exitCode => OnProcessExited(serviceName, exitCode);
-                runner.ProcessIDHandled += pidID =>
-                {
-                    state.ProcessId = pidID;
-                    UpdateStatus(state, ServiceStatus.Running);
-                };
-                _runners[serviceName] = runner;
-                state.StartedAt = DateTime.Now;
-                await runner.StartAsync(state.Definition);
-            }
-            catch (Exception ex)
-            {
-                state.LastError = ex.Message;
-                UpdateStatus(state, ServiceStatus.Error);
-                AddSystemLog(serviceName, $"Başlatma hatası: {ex.Message}", LogLevel.Error);
-            }
-        });
+                state.ProcessId = pidID;
+                UpdateStatus(state, ServiceStatus.Running);
+            };
+            _runners[serviceName] = runner;
+            state.StartedAt = DateTime.Now;
+            await runner.StartAsync(state.Definition);
+        }
+        catch (Exception ex)
+        {
+            state.LastError = ex.Message;
+            UpdateStatus(state, ServiceStatus.Error);
+            AddSystemLog(serviceName, $"Başlatma hatası: {ex.Message}", LogLevel.Error);
+        }
     }
 
     public async Task StopAsync(string serviceName)
     {
-        await Task.Run(async () =>
+        if (!_states.TryGetValue(serviceName, out var state)) return;
+
+        if (_runners.TryGetValue(serviceName, out var runner))
         {
-            if (!_states.TryGetValue(serviceName, out var state)) return;
+            await runner.StopAsync();
+            runner.Dispose();
+            _runners.Remove(serviceName);
+        }
 
-            if (_runners.TryGetValue(serviceName, out var runner))
-            {
-                await runner.StopAsync();
-                runner.Dispose();
-                _runners.Remove(serviceName);
-            }
-
-            state.ProcessId = null;
-            UpdateStatus(state, ServiceStatus.Stopped);
-        });
+        state.ProcessId = null;
+        UpdateStatus(state, ServiceStatus.Stopped);
     }
 
     public async Task RestartAsync(string serviceName)
     {
-        await Task.Run(async () =>
-        {
-            await StopAsync(serviceName);
-            await Task.Delay(500);
-            await StartAsync(serviceName);
-        });
+        await StopAsync(serviceName);
+        await Task.Delay(500);
+        await StartAsync(serviceName);
     }
 
     public async Task StartAllAsync()
@@ -148,8 +139,13 @@ public class ServiceManager : IDisposable
 
     public IReadOnlyList<LogEntry> GetLogs(string serviceName) =>
         _logs.TryGetValue(serviceName, out var list)
-            ? list.AsReadOnly()
+            ? SnapshotLogs(list)
             : Array.Empty<LogEntry>();
+
+    private static IReadOnlyList<LogEntry> SnapshotLogs(List<LogEntry> list)
+    {
+        lock (list) return list.ToArray();
+    }
 
     public void ClearLogs(string serviceName)
     {
@@ -165,10 +161,14 @@ public class ServiceManager : IDisposable
     {
         if (_logs.TryGetValue(entry.ServiceName, out var list))
         {
-            list.Add(entry);
-            // Bellek sınırı: son 5000 satır
-            if (list.Count > 5000)
-                list.RemoveRange(0, list.Count - 5000);
+            // stdout/stderr farklı thread'lerden geldiği için liste kilitlenir
+            lock (list)
+            {
+                list.Add(entry);
+                // Bellek sınırı: son 5000 satır
+                if (list.Count > 5000)
+                    list.RemoveRange(0, list.Count - 5000);
+            }
         }
         LogReceived?.Invoke(entry);
     }
