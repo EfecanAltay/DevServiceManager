@@ -3,12 +3,12 @@
   "WorkspaceRootPath": "D:\\Dev\\DevServiceManager\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|d:\\dev\\devservicemanager\\services\\processrunner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|solutionrelative:services\\processrunner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|d:\\dev\\devservicemanager\\managers\\servicemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|solutionrelative:managers\\servicemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|d:\\dev\\devservicemanager\\services\\processrunner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D67A43DC-3C1E-1B9C-7C77-9F63208E1555}|DevManager.csproj|solutionrelative:services\\processrunner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -18,7 +18,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Bookmark",
@@ -30,26 +30,26 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "ServiceManager.cs",
               "DocumentMoniker": "D:\\Dev\\DevServiceManager\\Managers\\ServiceManager.cs",
               "RelativeDocumentMoniker": "Managers\\ServiceManager.cs",
               "ToolTip": "D:\\Dev\\DevServiceManager\\Managers\\ServiceManager.cs",
               "RelativeToolTip": "Managers\\ServiceManager.cs",
-              "ViewState": "AgIAAEQAAAAAAAAAAAAAAAsAAAApAAAAAAAAAA==",
+              "ViewState": "AgIAAEQAAAAAAAAAAAAAAGMAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-11-11T13:20:32.58Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "ProcessRunner.cs",
               "DocumentMoniker": "D:\\Dev\\DevServiceManager\\Services\\ProcessRunner.cs",
               "RelativeDocumentMoniker": "Services\\ProcessRunner.cs",
               "ToolTip": "D:\\Dev\\DevServiceManager\\Services\\ProcessRunner.cs",
               "RelativeToolTip": "Services\\ProcessRunner.cs",
-              "ViewState": "AgIAAPIAAAAAAAAAAAAQwPoAAAANAAAAAAAAAA==",
+              "ViewState": "AgIAAO8AAAAAAAAAAAAQwPMAAAAOAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-11-11T12:44:10.257Z",
               "EditorCaption": ""
