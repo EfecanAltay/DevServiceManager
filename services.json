@@ -126,6 +126,15 @@
 		"Arguments": "",
         "Port": 9300,
         "AutoStart": false
+      },
+      {
+        "Name": "kibana",
+        "WorkingDirectory": "D:\\Elastic\\kibana-9.5.6\\bin",
+        "Command": "kibana.bat",
+        "Arguments": "",
+        "Port": 5601,
+        "HealthCheckUrl": null,
+        "AutoStart": false
       }
     ]
   },

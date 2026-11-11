@@ -158,6 +158,13 @@ public class MainForm : Form
         else
             _elasticPanel.UpdateStatus(elasticState);
 
+        var kibanaState = _manager.Services.FirstOrDefault(s =>
+            s.Definition.Name.Equals(ElasticPanel.KibanaServiceName, StringComparison.OrdinalIgnoreCase));
+        if (kibanaState is null)
+            _elasticPanel.SetKibanaUnavailable();
+        else
+            _elasticPanel.UpdateStatus(kibanaState);
+
         // ── Tepsi simgesi ──
         InitializeTray();
     }
@@ -497,7 +504,7 @@ public class MainForm : Form
     {
         InvokeIfNeeded(() =>
         {
-            if (state.Definition.Name.Equals(_elasticPanel.ServiceName, StringComparison.OrdinalIgnoreCase))
+            if (_elasticPanel.Handles(state.Definition.Name))
                 _elasticPanel.UpdateStatus(state);
 
             if (_mode == ViewMode.Services && _currentSolution?.Name == state.SolutionName)
@@ -514,7 +521,7 @@ public class MainForm : Form
     private void OnLogReceived(LogEntry entry)
     {
         // Elasticsearch loglarından cluster health bilgisini çıkar (arka plan thread'inden gelir)
-        if (entry.ServiceName.Equals(_elasticPanel.ServiceName, StringComparison.OrdinalIgnoreCase)
+        if (_elasticPanel.Handles(entry.ServiceName)
             && entry.Level != LogLevel.System
             && IsHandleCreated && !IsDisposed)
         {

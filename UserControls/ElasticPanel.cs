@@ -66,6 +66,20 @@ public static class ElasticLogInterpreter
         if (message.Contains("sun.misc.Unsafe::arrayBaseOffset has been called", StringComparison.OrdinalIgnoreCase))
             return "ℹ JVM uyarısı: paketlenmiş protobuf kütüphanesi eski sun.misc.Unsafe API'sini kullanıyor. Zararsızdır, hata değildir.";
 
+        // ── Kibana ──
+        if (message.Contains("Kibana is now available", StringComparison.OrdinalIgnoreCase))
+            return "ℹ Kibana hazır ve kullanılabilir (http://localhost:5601).";
+
+        if (message.Contains("http server running at", StringComparison.OrdinalIgnoreCase))
+            return "ℹ Kibana web sunucusu dinlemeye başladı; eklentiler yüklenirken birkaç saniye daha 'not ready' görebilirsiniz.";
+
+        if (message.Contains("Kibana server is not ready yet", StringComparison.OrdinalIgnoreCase))
+            return "ℹ Kibana henüz hazır değil; başlangıç işlemleri (migration, eklenti yükleme) sürüyor.";
+
+        if (message.Contains("Unable to connect to Elasticsearch", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("No Living connections", StringComparison.OrdinalIgnoreCase))
+            return "ℹ Kibana Elasticsearch'e bağlanamıyor. Elasticsearch'ün çalıştığını ve hazır olduğunu (cluster YELLOW/GREEN) kontrol edin.";
+
         return null;
     }
 }
@@ -77,13 +91,19 @@ public static class ElasticLogInterpreter
 public class ElasticPanel : Panel
 {
     public const string DefaultServiceName = "elasticsearch";
+    public const string KibanaServiceName = "kibana";
+    public const string KibanaUrl = "http://localhost:5601";
 
     private readonly Label _lblStatus;
     private readonly Label _lblHealth;
     private readonly Label _lblDescription;
+    private readonly Label _lblKibanaStatus;
     private readonly ListBox _events;
     private readonly Button _btnStart;
     private readonly Button _btnStop;
+    private readonly Button _btnKibanaStart;
+    private readonly Button _btnKibanaStop;
+    private readonly Button _btnKibanaOpen;
     private readonly Panel _dot;
 
     private Color _healthColor = AppTheme.Stopped;
@@ -96,10 +116,15 @@ public class ElasticPanel : Panel
     public event Action<string>? StopRequested;
     public event Action? HealthChanged;
 
+    /// <summary>Verilen servis adı bu panelin yönettiği servislerden biri mi (Elasticsearch/Kibana)?</summary>
+    public bool Handles(string serviceName) =>
+        serviceName.Equals(ServiceName, StringComparison.OrdinalIgnoreCase) ||
+        serviceName.Equals(KibanaServiceName, StringComparison.OrdinalIgnoreCase);
+
     public ElasticPanel(string serviceName = DefaultServiceName)
     {
         ServiceName = serviceName;
-        Size = new Size(400, 340);
+        Size = new Size(400, 440);
         BackColor = AppTheme.SurfaceAlt;
         Visible = false;
 
@@ -159,19 +184,52 @@ public class ElasticPanel : Panel
             Size = new Size(372, 62)
         };
 
+        var kibanaTitle = new Label
+        {
+            Text = "KIBANA",
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+            ForeColor = AppTheme.TextSecondary,
+            AutoSize = true,
+            Location = new Point(14, 152)
+        };
+
+        _lblKibanaStatus = new Label
+        {
+            Text = "STOPPED",
+            Font = new Font("Segoe UI", 8f),
+            ForeColor = AppTheme.Stopped,
+            AutoSize = true,
+            Location = new Point(14, 176)
+        };
+
+        _btnKibanaStart = CreateButton("▶ Başlat", AppTheme.Running);
+        _btnKibanaStop = CreateButton("■ Durdur", AppTheme.Error);
+        _btnKibanaOpen = CreateButton("⇱ Aç", AppTheme.Accent);
+        _btnKibanaStart.Click += (_, _) => StartRequested?.Invoke(KibanaServiceName);
+        _btnKibanaStop.Click += (_, _) => StopRequested?.Invoke(KibanaServiceName);
+        _btnKibanaOpen.Click += (_, _) =>
+        {
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(KibanaUrl) { UseShellExecute = true }); }
+            catch (Exception ex) { MessageBox.Show($"Tarayıcı açılamadı: {ex.Message}", "Kibana"); }
+        };
+        _btnKibanaOpen.Location = new Point(Width - 14 - 82, 168);
+        _btnKibanaStop.Location = new Point(Width - 14 - 82 - 6 - 82, 168);
+        _btnKibanaStart.Location = new Point(Width - 14 - 82 - 6 - 82 - 6 - 82, 168);
+        _btnKibanaStart.Enabled = _btnKibanaStop.Enabled = _btnKibanaOpen.Enabled = false;
+
         var lblEvents = new Label
         {
             Text = "OLAYLAR",
             Font = new Font("Segoe UI", 7.5f, FontStyle.Bold),
             ForeColor = AppTheme.TextMuted,
             AutoSize = true,
-            Location = new Point(14, 150)
+            Location = new Point(14, 208)
         };
 
         _events = new ListBox
         {
-            Location = new Point(14, 168),
-            Size = new Size(372, 158),
+            Location = new Point(14, 226),
+            Size = new Size(372, 200),
             BackColor = AppTheme.Surface,
             ForeColor = AppTheme.TextSecondary,
             BorderStyle = BorderStyle.None,
@@ -185,7 +243,12 @@ public class ElasticPanel : Panel
         _btnStop.Location = new Point(Width - 14 - 82, 34);
         _btnStart.Location = new Point(Width - 14 - 82 - 6 - 82, 34);
 
-        Controls.AddRange(new Control[] { title, _dot, _lblHealth, _lblStatus, _btnStart, _btnStop, _lblDescription, lblEvents, _events });
+        Controls.AddRange(new Control[]
+        {
+            title, _dot, _lblHealth, _lblStatus, _btnStart, _btnStop, _lblDescription,
+            kibanaTitle, _lblKibanaStatus, _btnKibanaStart, _btnKibanaStop, _btnKibanaOpen,
+            lblEvents, _events
+        });
     }
 
     private static Button CreateButton(string text, Color color) => new()
@@ -227,6 +290,12 @@ public class ElasticPanel : Panel
 
     public void UpdateStatus(ServiceState state)
     {
+        if (state.Definition.Name.Equals(KibanaServiceName, StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateKibanaStatus(state);
+            return;
+        }
+
         _lblStatus.Text = AppTheme.LabelForStatus(state.Status);
         _lblStatus.ForeColor = AppTheme.ForStatus(state.Status);
 
@@ -245,6 +314,15 @@ public class ElasticPanel : Panel
         }
     }
 
+    private void UpdateKibanaStatus(ServiceState state)
+    {
+        _lblKibanaStatus.Text = AppTheme.LabelForStatus(state.Status);
+        _lblKibanaStatus.ForeColor = AppTheme.ForStatus(state.Status);
+        _btnKibanaStart.Enabled = state.Status is ServiceStatus.Stopped or ServiceStatus.Error;
+        _btnKibanaStop.Enabled = state.Status is ServiceStatus.Running or ServiceStatus.Starting;
+        _btnKibanaOpen.Enabled = state.Status == ServiceStatus.Running;
+    }
+
     public void SetUnavailable()
     {
         _btnStart.Enabled = false;
@@ -253,10 +331,27 @@ public class ElasticPanel : Panel
         _lblStatus.ForeColor = AppTheme.TextMuted;
     }
 
-    /// <summary>Sistem notları (açıklamalar) dışındaki gerçek Elasticsearch loglarını işler.</summary>
+    public void SetKibanaUnavailable()
+    {
+        _btnKibanaStart.Enabled = _btnKibanaStop.Enabled = _btnKibanaOpen.Enabled = false;
+        _lblKibanaStatus.Text = "services.json içinde 'kibana' servisi yok";
+        _lblKibanaStatus.ForeColor = AppTheme.TextMuted;
+    }
+
+    /// <summary>Sistem notları (açıklamalar) dışındaki gerçek Elasticsearch/Kibana loglarını işler.</summary>
     public void ProcessLog(LogEntry entry)
     {
         if (entry.Level == LogLevel.System) return;
+
+        if (entry.ServiceName.Equals(KibanaServiceName, StringComparison.OrdinalIgnoreCase))
+        {
+            if (entry.Message.Contains("Kibana is now available", StringComparison.OrdinalIgnoreCase))
+                AddEvent("Kibana: hazır ve kullanılabilir.", AppTheme.Running);
+            else if (entry.Message.Contains("Unable to connect to Elasticsearch", StringComparison.OrdinalIgnoreCase)
+                     || entry.Message.Contains("No Living connections", StringComparison.OrdinalIgnoreCase))
+                AddEvent("Kibana: Elasticsearch'e bağlanamıyor.", AppTheme.Error);
+            return;
+        }
 
         var change = ElasticLogInterpreter.ParseHealthChange(entry.Message);
         if (change is not null)

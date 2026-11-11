@@ -23,7 +23,46 @@ public static class ConfigurationLoader
             return (sample, true);
         }
 
-        return LoadFromFile(ConfigPath);
+        var result = LoadFromFile(ConfigPath);
+        if (EnsureKibanaService(result.Solutions))
+            Save(result.Solutions);
+        return result;
+    }
+
+    /// <summary>
+    /// Kibana tanımı yoksa varsayılan olarak D:\Elastic\kibana-9.5.6\bin\kibana.bat'ı çalıştıracak
+    /// servisi, Elasticsearch ile aynı solution'a (yoksa "Elastic" solution'ına) ekler.
+    /// </summary>
+    private static bool EnsureKibanaService(List<SolutionDefinition> solutions)
+    {
+        bool Has(string name) => solutions.Any(s =>
+            s.Services.Any(x => x.Name.Equals(name, StringComparison.OrdinalIgnoreCase)));
+
+        if (Has("kibana")) return false;
+
+        var kibana = new ServiceDefinition
+        {
+            Name = "kibana",
+            WorkingDirectory = @"D:\Elastic\kibana-9.5.6\bin",
+            Command = "kibana.bat",
+            Arguments = "",
+            Port = 5601,
+            HealthCheckUrl = null,
+            AutoStart = false
+        };
+
+        var target = solutions.FirstOrDefault(s =>
+                         s.Services.Any(x => x.Name.Equals("elasticsearch", StringComparison.OrdinalIgnoreCase)))
+                     ?? solutions.FirstOrDefault(s => s.Name.Equals("Elastic", StringComparison.OrdinalIgnoreCase));
+
+        if (target is null)
+        {
+            target = new SolutionDefinition { Name = "Elastic", Services = [] };
+            solutions.Add(target);
+        }
+
+        target.Services.Add(kibana);
+        return true;
     }
 
     public static (List<SolutionDefinition> Solutions, bool WasCreated) LoadFromFile(string path)
