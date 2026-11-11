@@ -5,26 +5,82 @@ using DevManager.Models;
 namespace DevManager.UserControls;
 
 /// <summary>
-/// Elasticsearch için ayrı bölüm: başlat/durdur butonları, süreç durumu ve
-/// loglardan çözümlenen cluster health (GREEN/YELLOW/RED) bilgisini gösterir.
+/// Elasticsearch log satırlarını çözümler ve ne anlama geldiklerini açıklar.
+/// </summary>
+public static class ElasticLogInterpreter
+{
+    private static readonly Regex HealthRegex = new(
+        "Cluster health status changed from \\[(?<from>\\w+)\\] to \\[(?<to>\\w+)\\](?: \\(reason: \\[(?<reason>.*?)\\]\\))?",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex StartedRegex = new(@"\]\s+started\b", RegexOptions.Compiled);
+
+    public sealed record HealthChange(string From, string To, string Reason);
+
+    public static HealthChange? ParseHealthChange(string message)
+    {
+        var m = HealthRegex.Match(message);
+        return m.Success
+            ? new HealthChange(m.Groups["from"].Value.ToUpperInvariant(),
+                               m.Groups["to"].Value.ToUpperInvariant(),
+                               m.Groups["reason"].Value)
+            : null;
+    }
+
+    public static bool IsNodeStarted(string message) => StartedRegex.IsMatch(message);
+
+    public static string DescribeHealth(string health) => health switch
+    {
+        "GREEN" => "Tüm primary ve replica shard'lar atanmış; cluster tamamen sağlıklı.",
+        "YELLOW" => "Tüm primary shard'lar aktif, ancak bazı replica shard'lar atanamamış. Veriye erişilebilir; tek node'lu geliştirme ortamında normaldir.",
+        "RED" => "En az bir primary shard atanmamış; ilgili indekslerde veri erişilemez. Başlangıçta shard'lar yüklenirken geçicidir.",
+        _ => "Bilinmeyen cluster durumu."
+    };
+
+    /// <summary>Log satırı için kullanıcıya gösterilecek açıklamayı döndürür; açıklanacak bir şey yoksa null.</summary>
+    public static string? Explain(string message)
+    {
+        var change = ParseHealthChange(message);
+        if (change is not null)
+        {
+            var reason = change.Reason.StartsWith("shards started", StringComparison.OrdinalIgnoreCase)
+                ? " Sebep: shard'lar başlatıldı."
+                : string.IsNullOrWhiteSpace(change.Reason) ? "" : $" Sebep: {change.Reason}.";
+
+            var transition = (change.From, change.To) switch
+            {
+                ("RED", "YELLOW") => "Primary shard'lar artık aktif, veriye erişilebilir; replica shard'lar bekliyor.",
+                ("YELLOW", "GREEN") => "Replica shard'lar da atandı; cluster tam sağlıklı.",
+                ("RED", "GREEN") => "Tüm shard'lar atandı; cluster tam sağlıklı.",
+                _ => DescribeHealth(change.To)
+            };
+            return $"ℹ Cluster durumu {change.From} → {change.To}: {transition}{reason}";
+        }
+
+        if (IsNodeStarted(message))
+            return "ℹ Elasticsearch node'u başladı ve istekleri kabul etmeye hazır.";
+
+        if (message.Contains("stopping ...", StringComparison.OrdinalIgnoreCase))
+            return "ℹ Elasticsearch kapanıyor.";
+
+        if (message.Contains("sun.misc.Unsafe::arrayBaseOffset has been called", StringComparison.OrdinalIgnoreCase))
+            return "ℹ JVM uyarısı: paketlenmiş protobuf kütüphanesi eski sun.misc.Unsafe API'sini kullanıyor. Zararsızdır, hata değildir.";
+
+        return null;
+    }
+}
+
+/// <summary>
+/// Elasticsearch için panel: başlat/durdur, süreç durumu ve loglardan çözümlenen
+/// cluster health bilgisini açıklamalarıyla gösterir. Header'dan açılan bir açılır panel olarak kullanılır.
 /// </summary>
 public class ElasticPanel : Panel
 {
     public const string DefaultServiceName = "elasticsearch";
 
-    private static readonly Regex HealthRegex = new(
-        "Cluster health status changed from \\[(?<from>\\w+)\\] to \\[(?<to>\\w+)\\](?: \\(reason: \\[(?<reason>.*?)\\]\\))?",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-    private static readonly Regex CurrentHealthRegex = new(
-        "current\\.health=\"(?<h>\\w+)\"", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-    private static readonly Regex StartedRegex = new(
-        @"\]\s+started\b", RegexOptions.Compiled);
-
     private readonly Label _lblStatus;
     private readonly Label _lblHealth;
-    private readonly Label _lblLast;
+    private readonly Label _lblDescription;
     private readonly ListBox _events;
     private readonly Button _btnStart;
     private readonly Button _btnStop;
@@ -33,19 +89,25 @@ public class ElasticPanel : Panel
     private Color _healthColor = AppTheme.Stopped;
 
     public string ServiceName { get; }
+    public string HealthText { get; private set; } = "—";
+    public Color HealthColor => _healthColor;
 
     public event Action<string>? StartRequested;
     public event Action<string>? StopRequested;
+    public event Action? HealthChanged;
 
     public ElasticPanel(string serviceName = DefaultServiceName)
     {
         ServiceName = serviceName;
-        Height = 210;
-        Dock = DockStyle.Bottom;
+        Size = new Size(400, 340);
         BackColor = AppTheme.SurfaceAlt;
-        Padding = new Padding(12, 8, 12, 8);
+        Visible = false;
 
-        var line = new Panel { Height = 1, Dock = DockStyle.Top, BackColor = AppTheme.Border };
+        Paint += (_, e) =>
+        {
+            using var pen = new Pen(AppTheme.Border);
+            e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+        };
 
         var title = new Label
         {
@@ -53,10 +115,10 @@ public class ElasticPanel : Panel
             Font = new Font("Segoe UI", 8f, FontStyle.Bold),
             ForeColor = AppTheme.TextSecondary,
             AutoSize = true,
-            Location = new Point(12, 10)
+            Location = new Point(14, 12)
         };
 
-        _dot = new Panel { Size = new Size(12, 12), Location = new Point(12, 36) };
+        _dot = new Panel { Size = new Size(12, 12), Location = new Point(14, 42) };
         _dot.Paint += (_, e) =>
         {
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -67,10 +129,10 @@ public class ElasticPanel : Panel
         _lblHealth = new Label
         {
             Text = "—",
-            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+            Font = new Font("Segoe UI", 11f, FontStyle.Bold),
             ForeColor = AppTheme.Stopped,
             AutoSize = true,
-            Location = new Point(30, 31)
+            Location = new Point(32, 36)
         };
 
         _lblStatus = new Label
@@ -79,78 +141,88 @@ public class ElasticPanel : Panel
             Font = new Font("Segoe UI", 8f),
             ForeColor = AppTheme.Stopped,
             AutoSize = true,
-            Location = new Point(12, 54)
+            Location = new Point(14, 62)
         };
 
-        _btnStart = CreateButton("▶ Başlat", AppTheme.Running, 130);
-        _btnStop = CreateButton("■ Durdur", AppTheme.Error, 190);
+        _btnStart = CreateButton("▶ Başlat", AppTheme.Running);
+        _btnStop = CreateButton("■ Durdur", AppTheme.Error);
         _btnStart.Click += (_, _) => StartRequested?.Invoke(ServiceName);
         _btnStop.Click += (_, _) => StopRequested?.Invoke(ServiceName);
 
-        _lblLast = new Label
+        _lblDescription = new Label
         {
-            Text = "",
-            Font = new Font("Segoe UI", 7.5f),
-            ForeColor = AppTheme.TextMuted,
+            Text = "Elasticsearch loglarından cluster durumu burada açıklanır.",
+            Font = new Font("Segoe UI", 8f),
+            ForeColor = AppTheme.TextSecondary,
             AutoSize = false,
-            Size = new Size(230, 16),
-            Location = new Point(12, 74)
+            Location = new Point(14, 84),
+            Size = new Size(372, 62)
+        };
+
+        var lblEvents = new Label
+        {
+            Text = "OLAYLAR",
+            Font = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+            ForeColor = AppTheme.TextMuted,
+            AutoSize = true,
+            Location = new Point(14, 150)
         };
 
         _events = new ListBox
         {
-            Location = new Point(12, 94),
-            Size = new Size(230, 106),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
+            Location = new Point(14, 168),
+            Size = new Size(372, 158),
             BackColor = AppTheme.Surface,
             ForeColor = AppTheme.TextSecondary,
             BorderStyle = BorderStyle.None,
-            Font = new Font("Segoe UI", 7.5f),
+            Font = new Font("Segoe UI", 8f),
             IntegralHeight = false,
-            DrawMode = DrawMode.OwnerDrawFixed,
-            ItemHeight = 16
+            DrawMode = DrawMode.OwnerDrawVariable
         };
+        _events.MeasureItem += MeasureEvent;
         _events.DrawItem += DrawEvent;
 
-        Controls.AddRange(new Control[] { line, title, _dot, _lblHealth, _lblStatus, _btnStart, _btnStop, _lblLast, _events });
-        Resize += (_, _) =>
-        {
-            _btnStop.Location = new Point(Width - 12 - 76, 30);
-            _btnStart.Location = new Point(Width - 12 - 76 - 4 - 76, 30);
-            _events.Width = Width - 24;
-            _lblLast.Width = Width - 24;
-        };
+        _btnStop.Location = new Point(Width - 14 - 82, 34);
+        _btnStart.Location = new Point(Width - 14 - 82 - 6 - 82, 34);
+
+        Controls.AddRange(new Control[] { title, _dot, _lblHealth, _lblStatus, _btnStart, _btnStop, _lblDescription, lblEvents, _events });
     }
 
-    private Button CreateButton(string text, Color color, int x)
+    private static Button CreateButton(string text, Color color) => new()
     {
-        var b = new Button
-        {
-            Text = text,
-            Size = new Size(76, 24),
-            Location = new Point(x, 30),
-            BackColor = AppTheme.Surface,
-            ForeColor = color,
-            FlatStyle = FlatStyle.Flat,
-            Font = new Font("Segoe UI", 8f),
-            Cursor = Cursors.Hand
-        };
-        return b;
-    }
+        Text = text,
+        Size = new Size(82, 26),
+        BackColor = AppTheme.Surface,
+        ForeColor = color,
+        FlatStyle = FlatStyle.Flat,
+        Font = new Font("Segoe UI", 8f),
+        Cursor = Cursors.Hand
+    };
 
     private sealed record HealthEvent(DateTime Time, string Text, Color Color);
+
+    private void MeasureEvent(object? sender, MeasureItemEventArgs e)
+    {
+        if (e.Index < 0) return;
+        var ev = (HealthEvent)_events.Items[e.Index];
+        var size = TextRenderer.MeasureText(e.Graphics, FormatEvent(ev), _events.Font,
+            new Size(_events.Width - 8, int.MaxValue), TextFormatFlags.WordBreak);
+        e.ItemHeight = size.Height + 6;
+    }
 
     private void DrawEvent(object? sender, DrawItemEventArgs e)
     {
         if (e.Index < 0) return;
         e.DrawBackground();
         var ev = (HealthEvent)_events.Items[e.Index];
-        using var brush = new SolidBrush(ev.Color);
-        e.Graphics.DrawString($"[{ev.Time:HH:mm:ss}] {ev.Text}", _events.Font, brush, e.Bounds.X + 2, e.Bounds.Y + 1);
+        var rect = new Rectangle(e.Bounds.X + 2, e.Bounds.Y + 2, e.Bounds.Width - 4, e.Bounds.Height - 2);
+        TextRenderer.DrawText(e.Graphics, FormatEvent(ev), _events.Font, rect, ev.Color, TextFormatFlags.WordBreak);
     }
 
+    private static string FormatEvent(HealthEvent ev) => $"[{ev.Time:HH:mm:ss}] {ev.Text}";
+
     // ──────────────────────────────────────────────
-    // Dışarıdan çağrılan güncellemeler (UI thread)
+    // Güncellemeler (UI thread)
     // ──────────────────────────────────────────────
 
     public void UpdateStatus(ServiceState state)
@@ -162,9 +234,15 @@ public class ElasticPanel : Panel
         _btnStop.Enabled = state.Status is ServiceStatus.Running or ServiceStatus.Starting;
 
         if (state.Status is ServiceStatus.Stopped or ServiceStatus.Error)
+        {
             SetHealth("—", AppTheme.Stopped);
+            _lblDescription.Text = "Elasticsearch çalışmıyor.";
+        }
         else if (state.Status == ServiceStatus.Starting)
+        {
             SetHealth("STARTING", AppTheme.Starting);
+            _lblDescription.Text = "Elasticsearch başlatılıyor; shard'lar yüklenirken cluster geçici olarak RED olabilir.";
+        }
     }
 
     public void SetUnavailable()
@@ -175,49 +253,42 @@ public class ElasticPanel : Panel
         _lblStatus.ForeColor = AppTheme.TextMuted;
     }
 
+    /// <summary>Sistem notları (açıklamalar) dışındaki gerçek Elasticsearch loglarını işler.</summary>
     public void ProcessLog(LogEntry entry)
     {
-        var msg = entry.Message;
+        if (entry.Level == LogLevel.System) return;
 
-        var m = HealthRegex.Match(msg);
-        if (m.Success)
+        var change = ElasticLogInterpreter.ParseHealthChange(entry.Message);
+        if (change is not null)
         {
-            var to = m.Groups["to"].Value.ToUpperInvariant();
-            var from = m.Groups["from"].Value.ToUpperInvariant();
-            AddEvent($"{from} → {to}", ColorForHealth(to));
-            SetHealth(to, ColorForHealth(to));
+            var color = ColorForHealth(change.To);
+            SetHealth(change.To, color);
+            _lblDescription.Text = ElasticLogInterpreter.DescribeHealth(change.To);
+            AddEvent(ElasticLogInterpreter.Explain(entry.Message)!.TrimStart('ℹ', ' '), color);
             return;
         }
 
-        var c = CurrentHealthRegex.Match(msg);
-        if (c.Success)
-        {
-            var h = c.Groups["h"].Value.ToUpperInvariant();
-            SetHealth(h, ColorForHealth(h));
-            return;
-        }
-
-        if (StartedRegex.IsMatch(msg))
-            AddEvent("Node başladı", AppTheme.Running);
-        else if (msg.Contains("stopping ...", StringComparison.OrdinalIgnoreCase))
-            AddEvent("Node duruyor", AppTheme.Starting);
+        if (ElasticLogInterpreter.IsNodeStarted(entry.Message))
+            AddEvent("Node başladı ve istekleri kabul etmeye hazır.", AppTheme.Running);
+        else if (entry.Message.Contains("stopping ...", StringComparison.OrdinalIgnoreCase))
+            AddEvent("Node kapanıyor.", AppTheme.Starting);
     }
 
     private void SetHealth(string text, Color color)
     {
+        HealthText = text;
         _lblHealth.Text = text;
         _lblHealth.ForeColor = color;
         _healthColor = color;
         _dot.Invalidate();
+        HealthChanged?.Invoke();
     }
 
     private void AddEvent(string text, Color color)
     {
-        var now = DateTime.Now;
-        _events.Items.Insert(0, new HealthEvent(now, text, color));
+        _events.Items.Insert(0, new HealthEvent(DateTime.Now, text, color));
         while (_events.Items.Count > 50)
             _events.Items.RemoveAt(_events.Items.Count - 1);
-        _lblLast.Text = $"Son olay: {now:HH:mm:ss} — {text}";
     }
 
     private static Color ColorForHealth(string h) => h switch

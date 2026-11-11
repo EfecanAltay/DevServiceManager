@@ -231,6 +231,10 @@ public class ServiceManager : IDisposable
         StatusChanged?.Invoke(state);
     }
 
+    /// <summary>Servis log akışına bilgilendirici sistem notu ekler (UI'da System seviyesinde görünür).</summary>
+    public void AddNote(string serviceName, string message) =>
+        AddSystemLog(serviceName, message, LogLevel.System);
+
     private void AddSystemLog(string serviceName, string message, LogLevel level = LogLevel.System)
     {
         var entry = new LogEntry(serviceName, message, level);

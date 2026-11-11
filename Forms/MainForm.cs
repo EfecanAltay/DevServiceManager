@@ -29,6 +29,29 @@ public class MainForm : Form
     private readonly ServiceDetailPanel _detailPanel;
     private readonly LogPanel _logPanel;
     private readonly ElasticPanel _elasticPanel;
+    private Button _btnElastic = null!;
+
+    private void ToggleElasticPanel()
+    {
+        if (_elasticPanel.Visible)
+        {
+            _elasticPanel.Visible = false;
+            return;
+        }
+
+        var x = Math.Min(_btnElastic.Left, ClientSize.Width - _elasticPanel.Width - 8);
+        _elasticPanel.Location = new Point(Math.Max(0, x), _btnElastic.Parent!.Height);
+        _elasticPanel.Visible = true;
+        _elasticPanel.BringToFront();
+    }
+
+    private void UpdateElasticButton()
+    {
+        _btnElastic.ForeColor = _elasticPanel.HealthColor;
+        _btnElastic.Text = _elasticPanel.HealthText == "—"
+            ? "● Elasticsearch ▾"
+            : $"● Elastic: {_elasticPanel.HealthText} ▾";
+    }
 
     // ── Seçili öğeler ──
     private ServiceListItem? _selectedServiceItem;
@@ -76,10 +99,10 @@ public class MainForm : Form
         _elasticPanel = new ElasticPanel();
         _elasticPanel.StartRequested += name => _ = _manager.StartAsync(name);
         _elasticPanel.StopRequested  += name => _ = _manager.StopAsync(name);
+        _elasticPanel.HealthChanged  += UpdateElasticButton;
 
         _leftPanel.Controls.Add(_listContainer);
         _leftPanel.Controls.Add(leftHeader);
-        _leftPanel.Controls.Add(_elasticPanel);
 
         // ── Sağ taraf: üst detay + alt log ──
         _detailPanel = new ServiceDetailPanel();
@@ -118,6 +141,8 @@ public class MainForm : Form
         Controls.Add(splitter);
         Controls.Add(_leftPanel);
         Controls.Add(topBar);
+        Controls.Add(_elasticPanel);
+        _elasticPanel.BringToFront();
 
         // ── Manager olayları ──
         _manager.StatusChanged += OnStatusChanged;
@@ -125,6 +150,13 @@ public class MainForm : Form
 
         // ── Başlangıç görünümü ──
         ShowSolutions();
+
+        var elasticState = _manager.Services.FirstOrDefault(s =>
+            s.Definition.Name.Equals(ElasticPanel.DefaultServiceName, StringComparison.OrdinalIgnoreCase));
+        if (elasticState is null)
+            _elasticPanel.SetUnavailable();
+        else
+            _elasticPanel.UpdateStatus(elasticState);
 
         // ── Tepsi simgesi ──
         InitializeTray();
@@ -189,6 +221,10 @@ public class MainForm : Form
         var btnImport = CreateTopBarButton("  Import", 320);
         btnImport.Click += OnImportConfig;
 
+        _btnElastic = CreateTopBarButton("● Elasticsearch ▾", 420);
+        _btnElastic.Width = 150;
+        _btnElastic.Click += (_, _) => ToggleElasticPanel();
+
         var configPath = new Label
         {
             Text = ConfigurationLoader.GetConfigPath(),
@@ -199,7 +235,7 @@ public class MainForm : Form
         };
         configPath.Location = new Point(bar.Width - configPath.PreferredWidth - 16, 16);
 
-        bar.Controls.AddRange(new Control[] { logo, btnExport, btnImport, configPath });
+        bar.Controls.AddRange(new Control[] { logo, btnExport, btnImport, _btnElastic, configPath });
         bar.Resize += (_, _) =>
         {
             configPath.Location = new Point(bar.Width - configPath.PreferredWidth - 16, 16);
@@ -461,6 +497,9 @@ public class MainForm : Form
     {
         InvokeIfNeeded(() =>
         {
+            if (state.Definition.Name.Equals(_elasticPanel.ServiceName, StringComparison.OrdinalIgnoreCase))
+                _elasticPanel.UpdateStatus(state);
+
             if (_mode == ViewMode.Services && _currentSolution?.Name == state.SolutionName)
             {
                 if (_serviceItems.TryGetValue(state.Definition.Name, out var item))
@@ -476,9 +515,15 @@ public class MainForm : Form
     {
         // Elasticsearch loglarından cluster health bilgisini çıkar (arka plan thread'inden gelir)
         if (entry.ServiceName.Equals(_elasticPanel.ServiceName, StringComparison.OrdinalIgnoreCase)
+            && entry.Level != LogLevel.System
             && IsHandleCreated && !IsDisposed)
         {
             BeginInvoke(() => _elasticPanel.ProcessLog(entry));
+
+            // Log satırının ne anlama geldiğini çıktıya not olarak ekle
+            var note = ElasticLogInterpreter.Explain(entry.Message);
+            if (note is not null)
+                _manager.AddNote(entry.ServiceName, note);
         }
 
         // Sadece seçili servisin loglarını canlı göster
